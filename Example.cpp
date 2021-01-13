@@ -97,10 +97,10 @@ void Utility::createInstance(VkInstance& instance) {
         if (layer_itr == layerProperties.end()) {
             throw std::runtime_error("Validation layer not supported\n");
         }
-        // Else, push to layers and continue
+        // Else, push to layers
         enabledLayers.push_back(enableValidationLayers.value());
 
-        // We need to enable the extension named VK_EXT_DEBUG_REPORT_EXTENSION_NAME,
+        // We need to enable the extension VK_EXT_DEBUG_REPORT,
         //  to print the warnings emitted by the validation layer.
 
         // Gets number of supported extensions
@@ -110,17 +110,17 @@ void Utility::createInstance(VkInstance& instance) {
         std::vector<VkExtensionProperties> extensionProperties(extensionCount);
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensionProperties.data());
 
+        // Check `VK_EXT_DEBUG_REPORT` is among supported extensions
         bool debug_report = false;
         for(VkExtensionProperties& prop: extensionProperties) {
             if (strcmp(VK_EXT_DEBUG_REPORT_EXTENSION_NAME, prop.extensionName) == 0) { debug_report=true; break; }
         }
-
+        // If not, throw error
         if (!debug_report) {
             throw std::runtime_error("Extension VK_EXT_DEBUG_REPORT_EXTENSION_NAME not supported\n");
         }
-        // Else, push to layers and continue
+        // Else, push to extensions
         enabledExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-        
     }
 
     VkInstanceCreateInfo createInfo = {};
