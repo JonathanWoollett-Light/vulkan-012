@@ -64,7 +64,6 @@ ComputeApp::~ComputeApp() {
     vkFreeMemory(device, bufferMemory, nullptr);
     vkDestroyBuffer(device, buffer, nullptr);
 
-    // TODO STRUCT DESCTUROR
     vkDestroyShaderModule(device, computeShaderModule, nullptr);
     vkDestroyDescriptorPool(device, descriptorPool, nullptr);
     vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
@@ -139,13 +138,14 @@ void Utility::createInstance(VkInstance& instance) {
     }
 
     // Creates instance
-    #pragma warning(disable : 26812) // Removes enum scoping warnings from Vulkan
+    // TODO Do we need these `pragma`s?
+    // #pragma warning(disable : 26812) // Removes enum scoping warnings from Vulkan
     VK_CHECK_RESULT(vkCreateInstance(
         &createInfo,
         nullptr,
         &instance)
     );
-    #pragma warning(default : 26812)
+    // #pragma warning(default : 26812)
 }
 
 // Gets physical device
@@ -153,6 +153,7 @@ void Utility::getPhysicalDevice(VkInstance const& instance, VkPhysicalDevice& ph
     // Gets number of physical devices
     uint32_t deviceCount;
     vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+    
     // Asserts a system has a device
     assert(deviceCount != 0);
 
@@ -218,15 +219,21 @@ uint32_t Utility::findMemoryType(VkPhysicalDevice const& physicalDevice, uint32_
     VkPhysicalDeviceMemoryProperties memoryProperties;
     vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
 
-    // We iterate through the memory types we can allocate from heaps of this physical device
-
-   // `memoryProperties::memoryType` is an array of `VkMemorytype`s
-   //  describing the memory types that can be used to access memory
-   //  allocated from the heaps specified by `memoryHeaps`
+   // Iterate through memory types available on our physical device
     for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; ++i) {
-        if ((memoryTypeBits & (1 << i)) &&
-            ((memoryProperties.memoryTypes[i].propertyFlags & properties) == properties))
+        // If our resource supports a memory type, and
+        //  a memory type contains all required properties, then
+        //  return the index of this memory type
+        if (
+            // Check resource (buffer) supports this memory type
+            (memoryTypeBits & (1 << i)) &&
+            // Check all required properties are supported by this memory type.
+            //  `x&y==y` => `x contains y` => `All 1 bits in x are 1 bits in y`
+            //  Which is to say, all features of `properties` are in `memoryProperties.memoryTypes[i].propertyFlags`
+            ((memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
+        ) {
             return i;
+        }
     }
     return -1;
 }
@@ -243,14 +250,17 @@ void Utility::createBuffer(
     VkBufferCreateInfo bufferCreateInfo = {};
     {
         bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferCreateInfo.size = sizeof(float)*size; // buffer size in bytes. 
-        bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT; // buffer is used as a storage buffer.
-        bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; // buffer is exclusive to a single queue family at a time. 
+        // buffer size in bytes.
+        bufferCreateInfo.size = sizeof(float)*size;
+        // buffer is used as a storage buffer (and is thus accessible in a shader).
+        bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+        // buffer is exclusive to a single queue family at a time. 
+        bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; 
     }
 
     VK_CHECK_RESULT(vkCreateBuffer(device, &bufferCreateInfo, nullptr, buffer)); // Constructs buffer
 
-    // Buffers do not allocate memory upon construction, we must do it manually
+    // Buffers do not allocate memory upon instantiaton, we must do it manually
     
     // Gets buffer memory size and offset
     VkMemoryRequirements memoryRequirements;
@@ -259,11 +269,11 @@ void Utility::createBuffer(
     // Sets buffer options
     VkMemoryAllocateInfo allocateInfo = {};
     allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocateInfo.allocationSize = memoryRequirements.size; // Bytes
+    allocateInfo.allocationSize = memoryRequirements.size; // Size in bytes
 
     allocateInfo.memoryTypeIndex = findMemoryType(
         physicalDevice,
-        // Sets memory must supports all the operations our buffer memory supports
+        // Specifies memory types supported for the buffer
         memoryRequirements.memoryTypeBits,
         // Sets memory must have the properties:
         //  `VK_MEMORY_PROPERTY_HOST_COHERENT_BIT` Can more easily view
