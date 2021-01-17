@@ -297,8 +297,11 @@ void Utility::fillBuffer(
     uint32_t const bufferSize
 ) {
     void* data = nullptr;
+    // Maps buffer memory into RAM
     vkMapMemory(device, bufferMemory, 0, VK_WHOLE_SIZE, 0, &data);
-    memcpy(data, bufferData, (size_t)(bufferSize * sizeof(float)));
+    // Fills buffer memory
+    memcpy(data, bufferData, static_cast<size_t>(bufferSize * sizeof(float)));
+    // Un-maps buffer memory from RAM to device memory
     vkUnmapMemory(device, bufferMemory);
 }
 
