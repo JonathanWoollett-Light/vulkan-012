@@ -201,7 +201,6 @@ void Utility::createDevice(
             queueFamilyIndex = getComputeQueueFamilyIndex(physicalDevice); // find queue family with compute capability.
             queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
             queueCreateInfo.queueCount = 1; // create one queue in this family. We don't need more.
-            queueCreateInfo.pQueuePriorities = new float(1.0); // For 1 queue we simply need a 1 value array of the priority
         }
         deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
