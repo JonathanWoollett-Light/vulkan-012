@@ -460,8 +460,8 @@ void Utility::createComputePipeline(
     // The pipeline layout allows the pipeline to access descriptor sets. 
     // So we just specify the descriptor set layout we created earlier.
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {
-        .setLayoutCount = 1, // 1 shader
-        .pSetLayouts = descriptorSetLayout // Descriptor set   
+        .setLayoutCount = 1, // 1 descriptor set
+        .pSetLayouts = descriptorSetLayout // the 1 descriptor set 
     };
     
     VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, pipelineLayout));
@@ -483,7 +483,8 @@ void Utility::createComputePipeline(
     VK_CHECK_RESULT(vkCreateComputePipelines(
         device, VK_NULL_HANDLE,
         1, &pipelineCreateInfo,
-        nullptr, pipeline));
+        nullptr, pipeline
+    ));
 }
 
 // Creates command buffer
