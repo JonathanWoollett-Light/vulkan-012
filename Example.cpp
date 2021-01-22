@@ -122,20 +122,18 @@ void Utility::createInstance(VkInstance& instance) {
         enabledExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
     }
 
-    VkInstanceCreateInfo createInfo = {};
-    {
-        VkApplicationInfo applicationInfo = {};
-        {
-            applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-            applicationInfo.apiVersion = VK_API_VERSION_1_1;
-        }
-        createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-        createInfo.pApplicationInfo = &applicationInfo;
-        createInfo.enabledLayerCount = static_cast<uint32_t>(enabledLayers.size());
-        createInfo.ppEnabledLayerNames = enabledLayers.data();
-        createInfo.enabledExtensionCount = static_cast<uint32_t>(enabledExtensions.size());
-        createInfo.ppEnabledExtensionNames = enabledExtensions.data();
-    }
+    VkApplicationInfo applicationInfo = {
+        .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+        .apiVersion = VK_API_VERSION_1_1
+    };
+    VkInstanceCreateInfo createInfo = {
+        .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+        .pApplicationInfo = &applicationInfo,
+        .enabledLayerCount = static_cast<uint32_t>(enabledLayers.size()),
+        .ppEnabledLayerNames = enabledLayers.data(),
+        .enabledExtensionCount = static_cast<uint32_t>(enabledExtensions.size()),
+        .ppEnabledExtensionNames = enabledExtensions.data()
+    };
 
     // Creates instance
     // TODO Do we need these `pragma`s?
@@ -192,21 +190,20 @@ void Utility::createDevice(
     VkDevice& device,
     VkQueue& queue
 ) {
+    // Find queue family with compute capability.
+    queueFamilyIndex = getComputeQueueFamilyIndex(physicalDevice);
+    // Device queue info
+    VkDeviceQueueCreateInfo queueCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        .queueFamilyIndex = queueFamilyIndex,
+        .queueCount = 1 // create one queue in this family. We don't need more.
+    };
     // Device info
-    VkDeviceCreateInfo deviceCreateInfo = {};
-    {   
-        // Device queue info
-        VkDeviceQueueCreateInfo queueCreateInfo = {};
-        {
-            queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-            queueFamilyIndex = getComputeQueueFamilyIndex(physicalDevice); // find queue family with compute capability.
-            queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
-            queueCreateInfo.queueCount = 1; // create one queue in this family. We don't need more.
-        }
-        deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
-        deviceCreateInfo.queueCreateInfoCount = 1;
-    }
+    VkDeviceCreateInfo deviceCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        .queueCreateInfoCount = 1,
+        .pQueueCreateInfos = &queueCreateInfo
+    };
 
     VK_CHECK_RESULT(vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device)); // create logical device.
 
@@ -228,7 +225,7 @@ uint32_t Utility::findMemoryType(VkPhysicalDevice const& physicalDevice, uint32_
             // Check resource (buffer) supports this memory type
             (memoryTypeBits & (1 << i)) &&
             // Check all required properties are supported by this memory type.
-            //  `x&y==y` => `x contains y` => `All 1 bits in x are 1 bits in y`
+            //  `x&y==y` => `x contains y` => `All 1 bits in y are 1 bits in x`
             //  Which is to say, all features of `properties` are in `memoryProperties.memoryTypes[i].propertyFlags`
             ((memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
         ) {
@@ -247,18 +244,18 @@ void Utility::createBuffer(
     VkDeviceMemory * const bufferMemory
 ) {
     // Buffer info
-    VkBufferCreateInfo bufferCreateInfo = {};
-    {
-        bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    VkBufferCreateInfo bufferCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         // buffer size in bytes.
-        bufferCreateInfo.size = sizeof(float)*size;
+        .size = sizeof(float)*size,
         // buffer is used as a storage buffer (and is thus accessible in a shader).
-        bufferCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+        .usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
         // buffer is exclusive to a single queue family at a time. 
-        bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; 
-    }
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+    };
 
-    VK_CHECK_RESULT(vkCreateBuffer(device, &bufferCreateInfo, nullptr, buffer)); // Constructs buffer
+    // Constructs buffer
+    VK_CHECK_RESULT(vkCreateBuffer(device, &bufferCreateInfo, nullptr, buffer));
 
     // Buffers do not allocate memory upon instantiaton, we must do it manually
     
@@ -266,18 +263,19 @@ void Utility::createBuffer(
     VkMemoryRequirements memoryRequirements;
     vkGetBufferMemoryRequirements(device, *buffer, &memoryRequirements);
     
-    // Sets buffer options
-    VkMemoryAllocateInfo allocateInfo = {};
-    allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocateInfo.allocationSize = memoryRequirements.size; // Size in bytes
+    // Memory info
+    VkMemoryAllocateInfo allocateInfo = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize = memoryRequirements.size  // Size in bytes
+    };
 
     allocateInfo.memoryTypeIndex = findMemoryType(
         physicalDevice,
         // Specifies memory types supported for the buffer
         memoryRequirements.memoryTypeBits,
         // Sets memory must have the properties:
-        //  `VK_MEMORY_PROPERTY_HOST_COHERENT_BIT` Can more easily view
-        //  `VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT` Can read from GPU to CPU
+        //  `VK_MEMORY_PROPERTY_HOST_COHERENT_BIT` Easily view
+        //  `VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT` Read from GPU to CPU
         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
     );
 
@@ -310,21 +308,27 @@ void Utility::createDescriptorSetLayout(
     VkDevice const& device,
     VkDescriptorSetLayout* descriptorSetLayout
 ) {
+    VkDescriptorSetLayoutBinding binding = {
+        // `layout(binding = 0)`
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        // Specifies the number buffers of a binding
+        //  `layout(binding=0) buffer Buffer { uint x[]; }` or
+        //   `layout(binding=0) buffer Buffer { uint x[]; } buffers[1]` would equal 1
+        //
+        //  `layout(binding=0) buffer Buffer { uint x[]; } buffers[3]` would equal 3,
+        //   in affect saying we have 3 buffers of the same format (`buffers[0].x` etc.).
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT
+    };
     // Descriptor set layout options
-    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
-    {
-        VkDescriptorSetLayoutBinding binding = {};
-        {
-            binding.binding = 0; // `layout(binding = i)`
-            binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            binding.descriptorCount = 1; // TODO Wtf does this do? Number of items in buffer maybe?
-            binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-        }
-        
-        descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        descriptorSetLayoutCreateInfo.bindingCount = 1; // 1 descriptor/bindings in this descriptor set
-        descriptorSetLayoutCreateInfo.pBindings = &binding;
-    }
+    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        // `bindingCount` specifies length of `pBindings` array, in this case 1.
+        .bindingCount = 1,
+        // array of `VkDescriptorSetLayoutBinding`s
+        .pBindings = &binding
+    };
     
     // Create the descriptor set layout. 
     VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, nullptr, descriptorSetLayout));
@@ -338,35 +342,33 @@ void Utility::createDescriptorSet(
     VkBuffer& buffer,
     VkDescriptorSet& descriptorSet
 ) {
+    // Descriptor type and number
+    VkDescriptorPoolSize descriptorPoolSize = {
+        .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, // Descriptor type
+        .descriptorCount = 1 // Number of descriptors
+    };
+
     // Creates descriptor pool
     // A pool implements a number of descriptors of each type 
     //  `VkDescriptorPoolSize` specifies for each descriptor type the number to hold
     // A descriptor set is initialised to contain all descriptors defined in a descriptor pool
-    VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
-    {
-        // Descriptor type and number
-        VkDescriptorPoolSize descriptorPoolSize = {};
-        {
-            descriptorPoolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; // Descriptor type
-            descriptorPoolSize.descriptorCount = 1; // Number of descriptors
-        }
-        descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        descriptorPoolCreateInfo.maxSets = 1; // max number of sets that can be allocated from this pool
-        descriptorPoolCreateInfo.poolSizeCount = 1; // length of `pPoolSizes`
-        descriptorPoolCreateInfo.pPoolSizes = &descriptorPoolSize; // pointer to array of `VkDescriptorPoolSize`
-    }
+    VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .maxSets = 1, // max number of sets that can be allocated from this pool
+        .poolSizeCount = 1, // length of `pPoolSizes`
+        .pPoolSizes = &descriptorPoolSize // pointer to array of `VkDescriptorPoolSize`
+    };
 
     // create descriptor pool.
     VK_CHECK_RESULT(vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, nullptr, descriptorPool));
 
     // Specifies options for creation of multiple of descriptor sets
-    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
-    {
-        descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        descriptorSetAllocateInfo.descriptorPool = *descriptorPool; // pool from which sets will be allocated
-        descriptorSetAllocateInfo.descriptorSetCount = 1; // number of descriptor sets to implement (also length of `pSetLayouts`)
-        descriptorSetAllocateInfo.pSetLayouts = descriptorSetLayout; // pointer to array of descriptor set layouts
-    }
+    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorPool = *descriptorPool, // pool from which sets will be allocated
+        .descriptorSetCount = 1, // number of descriptor sets to implement (also length of `pSetLayouts`)
+        .pSetLayouts = descriptorSetLayout // pointer to array of descriptor set layouts
+    };
     
 
     // allocate descriptor set.
@@ -376,35 +378,35 @@ void Utility::createDescriptorSet(
     // VkMemoryRequirements memoryRequirements;
     // vkGetBufferMemoryRequirements(device, *buffer, &memoryRequirements);
 
-    // Binds descriptors from our descriptor sets to our buffers
-    VkWriteDescriptorSet writeDescriptorSet = {};
-    {
-        // Binds descriptors to buffers
-        VkDescriptorBufferInfo binding = {};
-        {
-            binding.buffer = buffer;
-            binding.offset = 0;
-            // If size not given, set to whole size of buffer
-            binding.range = VK_WHOLE_SIZE;
-        }
+    // Binds descriptors to buffers
+    VkDescriptorBufferInfo binding = {
+        .buffer = buffer,
+        .offset = 0,
+        .range = VK_WHOLE_SIZE // set to whole size of buffer
+    };
 
-        writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSet.dstSet = descriptorSet; // write to this descriptor set.
+    // Binds descriptors from our descriptor sets to our buffers
+    VkWriteDescriptorSet writeDescriptorSet = {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        // write to this descriptor set.
+        .dstSet = descriptorSet,
         // TODO Wtf does this do?
         //  My best guess is that descriptor sets can have multile bindings to different sets of buffers.
         //  original comment said 'write to the first, and only binding.'
-        writeDescriptorSet.dstBinding = 0;
-        writeDescriptorSet.descriptorCount = 1; // update all descriptors in set.
-        writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; // storage buffer.
-        writeDescriptorSet.pBufferInfo = &binding;
-    }
+        .dstBinding = 0,
+        // update all descriptors in set.
+        .descriptorCount = 1,
+        // storage buffer.
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .pBufferInfo = &binding
+    };
     
     // perform the update of the descriptor set.
     vkUpdateDescriptorSets(device, 1, &writeDescriptorSet, 0, nullptr);
 }
 
 // Reads shader file
-uint32_t* Utility::readShader(uint32_t& length, char const* filename) {
+std::pair<uint32_t,uint32_t*> Utility::readShader(char const* filename) {
     // std::string path = "../../../";
     // std::cout << "paths:" << std::endl;
     // for (const auto & entry : std::filesystem::directory_iterator(path)) {
@@ -436,8 +438,7 @@ uint32_t* Utility::readShader(uint32_t& length, char const* filename) {
         str[i] = 0;
     }
 
-    length = filesizepadded;
-    return (uint32_t *)str;
+    return std::make_pair(filesizepadded,(uint32_t *)str);
 }
 
 // Creates compute pipeline
@@ -450,13 +451,18 @@ void Utility::createComputePipeline(
     VkPipeline* pipeline
 ) {
     // Creates shader module (just a wrapper around our shader)
-    VkShaderModuleCreateInfo createInfo = {};
-    {
-        uint32_t filelength;
-        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        createInfo.pCode = readShader(filelength, shaderFile);
-        createInfo.codeSize = filelength;
-    }
+    // std::pair<uint32_t,uint32_t*> file = readShader(shaderFile); // (length,bytes)
+    // VkShaderModuleCreateInfo createInfo = {
+    //     .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+    //     .codeSize = file.first,
+    //     .pCode = file.second
+    // };
+    auto [fileLength, fileBytes]= readShader(shaderFile); // (length,bytes)
+    VkShaderModuleCreateInfo createInfo = {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = fileLength,
+        .pCode = fileBytes
+    };
 
     VK_CHECK_RESULT(vkCreateShaderModule(device, &createInfo, nullptr, computeShaderModule));
 
@@ -465,32 +471,28 @@ void Utility::createComputePipeline(
 
     // The pipeline layout allows the pipeline to access descriptor sets. 
     // So we just specify the descriptor set layout we created earlier.
-    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {};
-    {
-        pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pipelineLayoutCreateInfo.setLayoutCount = 1; // 1 shader
-        pipelineLayoutCreateInfo.pSetLayouts = descriptorSetLayout; // Descriptor set        
-    }
+    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 1, // 1 shader
+        .pSetLayouts = descriptorSetLayout // Descriptor set   
+    };
     
     VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, pipelineLayout));
 
+    // We specify the compute shader stage, and it's entry point(main).
+    VkPipelineShaderStageCreateInfo shaderStageCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage = VK_SHADER_STAGE_COMPUTE_BIT, // Shader type
+        .module = *computeShaderModule, // Shader module
+        .pName = "main" // Shader entry point
+    };
+
     // Set our pipeline options
-    VkComputePipelineCreateInfo pipelineCreateInfo = {};
-    {
-        // We specify the compute shader stage, and it's entry point(main).
-        VkPipelineShaderStageCreateInfo shaderStageCreateInfo = {};
-        {
-            shaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shaderStageCreateInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT; // Shader type
-            shaderStageCreateInfo.module = *computeShaderModule; // Shader module
-            shaderStageCreateInfo.pName = "main"; // Shader entry point
-        }
-        // We set our pipeline options
-        pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-        pipelineCreateInfo.stage = shaderStageCreateInfo; // Shader stage info
-        pipelineCreateInfo.layout = *pipelineLayout;
-    }
-    
+    VkComputePipelineCreateInfo pipelineCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+        .stage = shaderStageCreateInfo,
+        .layout = *pipelineLayout
+    };
 
     // Create compute pipeline
     VK_CHECK_RESULT(vkCreateComputePipelines(
@@ -512,32 +514,27 @@ void Utility::createCommandBuffer(
     uint32_t const* dimLengths // [local_size_x, local_size_y, local_size_z]
 ) {
     // Creates command pool
-    VkCommandPoolCreateInfo commandPoolCreateInfo = {};
-    {
-        commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        commandPoolCreateInfo.flags = 0;
-        // Sets queue family
-        commandPoolCreateInfo.queueFamilyIndex = queueFamilyIndex;
-    }
+    VkCommandPoolCreateInfo commandPoolCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .queueFamilyIndex = queueFamilyIndex // Sets queue family
+    };
     VK_CHECK_RESULT(vkCreateCommandPool(device, &commandPoolCreateInfo, nullptr, commandPool));
 
     //  Allocates command buffer
-    VkCommandBufferAllocateInfo commandBufferAllocateInfo = {};
-    {
-        commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        commandBufferAllocateInfo.commandPool = *commandPool; // Pool to allocate from
-        commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        commandBufferAllocateInfo.commandBufferCount = 1; // Allocates 1 command buffer. 
-    }
+    VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = *commandPool,  // Pool to allocate from
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1  // Allocates 1 command buffer. 
+    };
     VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, commandBuffer)); // allocate command buffer.
 
     // Allocated command buffer options
-    VkCommandBufferBeginInfo beginInfo = {};
-    {
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    VkCommandBufferBeginInfo beginInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         // Buffer only submitted once
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    }
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+    };
     // Start recording commands
     VK_CHECK_RESULT(vkBeginCommandBuffer(*commandBuffer, &beginInfo));
 
@@ -564,22 +561,20 @@ void Utility::runCommandBuffer(
     VkDevice const& device,
     VkQueue const& queue
 ) {
-    VkSubmitInfo submitInfo = {};
-    {
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    VkSubmitInfo submitInfo = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         // submit 1 command buffer
-        submitInfo.commandBufferCount = 1;
+        .commandBufferCount = 1,
         // pointer to array of command buffers to submit
-        submitInfo.pCommandBuffers = commandBuffer;
-    }
+        .pCommandBuffers = commandBuffer
+    };
 
     // Creates fence (so we can await for command buffer to finish)
     VkFence fence;
-    VkFenceCreateInfo fenceCreateInfo = {};
-    {
-        fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        // fenceCreateInfo.flags = 0; // this is set by default // https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkFenceCreateFlagBits.html
-    }
+    VkFenceCreateInfo fenceCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        // fenceCreateInfo.flags = 0; // this is set by default
+    };
     VK_CHECK_RESULT(vkCreateFence(device, &fenceCreateInfo, nullptr, &fence));
 
     // Submit command buffer with fence

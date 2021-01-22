@@ -106,7 +106,7 @@ namespace Utility {
         VkDescriptorSet& descriptorSet
     );
     // Reads shader file
-    uint32_t* readShader(uint32_t& length, char const* filename);
+    std::pair<uint32_t,uint32_t*> readShader(char const* filename);
     // Creates compute pipeline
     void createComputePipeline(
         VkDevice const& device,
