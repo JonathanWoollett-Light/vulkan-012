@@ -89,9 +89,11 @@ void Utility::createInstance(VkInstance& instance) {
         vkEnumerateInstanceLayerProperties(&layerCount, layerProperties.data());
 
         // Check 'VK_LAYER_KHRONOS_validation' is among supported layers
-        auto layer_itr = std::find_if(layerProperties.begin(), layerProperties.end(), [](VkLayerProperties& prop) {
-            return (strcmp(enableValidationLayers.value(), prop.layerName) == 0);
-        });
+        auto layer_itr = std::find_if(layerProperties.begin(), layerProperties.end(),
+            [](VkLayerProperties& prop) {
+                return (strcmp(enableValidationLayers.value(), prop.layerName) == 0);
+            }
+        );
         // If not, throw error
         if (layer_itr == layerProperties.end()) {
             throw std::runtime_error("Validation layer not supported\n");
@@ -112,11 +114,16 @@ void Utility::createInstance(VkInstance& instance) {
         // Check `VK_EXT_DEBUG_REPORT` is among supported extensions
         bool debug_report = false;
         for(VkExtensionProperties& prop: extensionProperties) {
-            if (strcmp(VK_EXT_DEBUG_REPORT_EXTENSION_NAME, prop.extensionName) == 0) { debug_report=true; break; }
+            if (strcmp(VK_EXT_DEBUG_REPORT_EXTENSION_NAME, prop.extensionName) == 0) { 
+                debug_report=true; 
+                break;
+            }
         }
         // If not, throw error
         if (!debug_report) {
-            throw std::runtime_error("Extension VK_EXT_DEBUG_REPORT_EXTENSION_NAME not supported\n");
+            throw std::runtime_error(
+                "Extension VK_EXT_DEBUG_REPORT_EXTENSION_NAME not supported\n"
+            );
         }
         // Else, push to extensions
         enabledExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
@@ -165,16 +172,22 @@ void Utility::getPhysicalDevice(VkInstance const& instance, VkPhysicalDevice& ph
 uint32_t Utility::getComputeQueueFamilyIndex(VkPhysicalDevice const& physicalDevice) {
     // Gets number of queue families
     uint32_t queueFamilyCount;
-    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+    vkGetPhysicalDeviceQueueFamilyProperties(
+        physicalDevice, &queueFamilyCount, nullptr
+    );
 
     // Gets queue families
     std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
+    vkGetPhysicalDeviceQueueFamilyProperties(
+        physicalDevice, &queueFamilyCount, queueFamilies.data()
+    );
 
     // Finds 1st queue family which supports compute
-    auto itr = std::find_if(queueFamilies.begin(), queueFamilies.end(), [](VkQueueFamilyProperties& props) {
-        return (props.queueFlags & VK_QUEUE_COMPUTE_BIT);
-    });
+    auto itr = std::find_if(queueFamilies.begin(), queueFamilies.end(),
+        [](VkQueueFamilyProperties& props) {
+            return (props.queueFlags & VK_QUEUE_COMPUTE_BIT);
+        }
+    );
     if (itr == queueFamilies.end()) {
         throw std::runtime_error("No compute queue family");
     }
@@ -208,7 +221,11 @@ void Utility::createDevice(
 }
 
 // Finds memory type with given properties
-uint32_t Utility::findMemoryType(VkPhysicalDevice const& physicalDevice, uint32_t const memoryTypeBits, VkMemoryPropertyFlags const properties) {
+uint32_t Utility::findMemoryType(
+    VkPhysicalDevice const& physicalDevice, 
+    uint32_t const memoryTypeBits, 
+    VkMemoryPropertyFlags const properties
+) {
     VkPhysicalDeviceMemoryProperties memoryProperties;
     vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
 
@@ -221,9 +238,9 @@ uint32_t Utility::findMemoryType(VkPhysicalDevice const& physicalDevice, uint32_
             // Check resource (buffer) supports this memory type
             (memoryTypeBits & (1 << i)) &&
             // Check all required properties are supported by this memory type.
-            //  `x&y==y` => `x contains y` => `All 1 bits in y are 1 bits in x`
-            //  Which is to say, all features of `properties` are in `memoryProperties.memoryTypes[i].propertyFlags`
-            ((memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
+            //  `x&y==y` <=> `x contains y` <=> `All 1 bits in y are 1 bits in x`
+            //  <=> All features of `properties` are in `memoryTypes[i].propertyFlags`
+            ((memoryProperties.memoryTypes[i].propertyFlags & properties)==properties)
         ) {
             return i;
         }
@@ -324,7 +341,9 @@ void Utility::createDescriptorSetLayout(
     };
     
     // Create the descriptor set layout. 
-    VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, nullptr, descriptorSetLayout));
+    VK_CHECK_RESULT(vkCreateDescriptorSetLayout(
+        device, &descriptorSetLayoutCreateInfo, nullptr, descriptorSetLayout
+    ));
 }
 
 // Creates descriptor set
@@ -337,36 +356,32 @@ void Utility::createDescriptorSet(
 ) {
     // Descriptor type and number
     VkDescriptorPoolSize descriptorPoolSize = {
+        .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         .descriptorCount = 1 // Number of descriptors
     };
-
     // Creates descriptor pool
-    // A pool implements a number of descriptors of each type 
-    //  `VkDescriptorPoolSize` specifies for each descriptor type the number to hold
-    // A descriptor set is initialised to contain all descriptors defined in a descriptor pool
+    // A pool allocates a number of descriptors of each type
     VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {
         .maxSets = 1, // max number of sets that can be allocated from this pool
         .poolSizeCount = 1, // length of `pPoolSizes`
         .pPoolSizes = &descriptorPoolSize // pointer to array of `VkDescriptorPoolSize`
     };
-
     // create descriptor pool.
-    VK_CHECK_RESULT(vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, nullptr, descriptorPool));
+    VK_CHECK_RESULT(vkCreateDescriptorPool(
+        device, &descriptorPoolCreateInfo, nullptr, descriptorPool
+    ));
 
     // Specifies options for creation of multiple of descriptor sets
     VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {
-        .descriptorPool = *descriptorPool, // pool from which sets will be allocated
-        .descriptorSetCount = 1, // number of descriptor sets to implement (also length of `pSetLayouts`)
-        .pSetLayouts = descriptorSetLayout // pointer to array of descriptor set layouts
+        // pool from which sets will be allocated
+        .descriptorPool = *descriptorPool, 
+        // number of descriptor sets to implement (length of `pSetLayouts`)
+        .descriptorSetCount = 1, 
+        // pointer to array of descriptor set layouts
+        .pSetLayouts = descriptorSetLayout 
     };
-    
-
     // allocate descriptor set.
     VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, &descriptorSet));
-
-    // Gets buffer memory size and offset
-    // VkMemoryRequirements memoryRequirements;
-    // vkGetBufferMemoryRequirements(device, *buffer, &memoryRequirements);
 
     // Binds descriptors to buffers
     VkDescriptorBufferInfo binding = {
@@ -375,18 +390,15 @@ void Utility::createDescriptorSet(
         .range = VK_WHOLE_SIZE // set to whole size of buffer
     };
 
-    // Binds descriptors from our descriptor sets to our buffers
+    // Binds descriptors from descriptor sets to buffers
     VkWriteDescriptorSet writeDescriptorSet = {
         // write to this descriptor set.
         .dstSet = descriptorSet,
-        // TODO Wtf does this do?
-        //  My best guess is that descriptor sets can have multile bindings to different sets of buffers.
-        //  original comment said 'write to the first, and only binding.'
-        .dstBinding = 0,
-        // update all descriptors in set.
+        // update 1 descriptor respective set (we only have 1).
         .descriptorCount = 1,
-        // storage buffer.
+        // buffer type.
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        // respective buffer.
         .pBufferInfo = &binding
     };
     
@@ -452,7 +464,9 @@ void Utility::createComputePipeline(
         .pCode = fileBytes
     };
 
-    VK_CHECK_RESULT(vkCreateShaderModule(device, &createInfo, nullptr, computeShaderModule));
+    VK_CHECK_RESULT(vkCreateShaderModule(
+        device, &createInfo, nullptr, computeShaderModule
+    ));
 
     // A compute pipeline is very simple compared to a graphics pipeline.
     // It only consists of a single stage with a compute shader.
@@ -464,7 +478,9 @@ void Utility::createComputePipeline(
         .pSetLayouts = descriptorSetLayout // the 1 descriptor set 
     };
     
-    VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, pipelineLayout));
+    VK_CHECK_RESULT(vkCreatePipelineLayout(
+        device, &pipelineLayoutCreateInfo, nullptr, pipelineLayout
+    ));
 
     // We specify the compute shader stage, and it's entry point(main).
     VkPipelineShaderStageCreateInfo shaderStageCreateInfo = {
@@ -503,7 +519,9 @@ void Utility::createCommandBuffer(
     VkCommandPoolCreateInfo commandPoolCreateInfo = {
         .queueFamilyIndex = queueFamilyIndex // Sets queue family
     };
-    VK_CHECK_RESULT(vkCreateCommandPool(device, &commandPoolCreateInfo, nullptr, commandPool));
+    VK_CHECK_RESULT(vkCreateCommandPool(
+        device, &commandPoolCreateInfo, nullptr, commandPool
+    ));
 
     // Allocates command buffer
     VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
@@ -511,7 +529,9 @@ void Utility::createCommandBuffer(
         .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
         .commandBufferCount = 1  // Allocates 1 command buffer. 
     };
-    VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, commandBuffer));
+    VK_CHECK_RESULT(vkAllocateCommandBuffers(
+        device, &commandBufferAllocateInfo, commandBuffer
+    ));
 
     // Allocated command buffer options
     VkCommandBufferBeginInfo beginInfo = {
