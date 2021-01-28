@@ -130,9 +130,11 @@ void Utility::createInstance(VkInstance& instance) {
     }
 
     VkApplicationInfo applicationInfo = {
+        .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .apiVersion = VK_API_VERSION_1_1 // Vulkan version
     };
     VkInstanceCreateInfo createInfo = {
+        .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pApplicationInfo = &applicationInfo,
         .enabledLayerCount = static_cast<uint32_t>(enabledLayers.size()),
         .ppEnabledLayerNames = enabledLayers.data(),
@@ -205,11 +207,14 @@ void Utility::createDevice(
     queueFamilyIndex = getComputeQueueFamilyIndex(physicalDevice);
     // Device queue info
     VkDeviceQueueCreateInfo queueCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
         .queueFamilyIndex = queueFamilyIndex,
-        .queueCount = 1 // create one queue in this family. We don't need more.
+        .queueCount = 1, // create one queue in this family. We don't need more.
+        .pQueuePriorities = new float(1)
     };
     // Device info
     VkDeviceCreateInfo deviceCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &queueCreateInfo
     };
@@ -258,6 +263,7 @@ void Utility::createBuffer(
 ) {
     // Buffer info
     VkBufferCreateInfo bufferCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         // buffer size in bytes.
         .size = sizeof(float)*size,
         // buffer is used as a storage buffer (and is thus accessible in a shader).
@@ -277,6 +283,7 @@ void Utility::createBuffer(
     
     // Memory info
     VkMemoryAllocateInfo allocateInfo = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
         .allocationSize = memoryRequirements.size  // Size in bytes
     };
 
@@ -334,6 +341,7 @@ void Utility::createDescriptorSetLayout(
     };
     // Descriptor set layout options
     VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
         // `bindingCount` specifies length of `pBindings` array, in this case 1.
         .bindingCount = 1,
         // array of `VkDescriptorSetLayoutBinding`s
@@ -362,6 +370,7 @@ void Utility::createDescriptorSet(
     // Creates descriptor pool
     // A pool allocates a number of descriptors of each type
     VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .maxSets = 1, // max number of sets that can be allocated from this pool
         .poolSizeCount = 1, // length of `pPoolSizes`
         .pPoolSizes = &descriptorPoolSize // pointer to array of `VkDescriptorPoolSize`
@@ -373,6 +382,7 @@ void Utility::createDescriptorSet(
 
     // Specifies options for creation of multiple of descriptor sets
     VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         // pool from which sets will be allocated
         .descriptorPool = *descriptorPool, 
         // number of descriptor sets to implement (length of `pSetLayouts`)
@@ -392,6 +402,7 @@ void Utility::createDescriptorSet(
 
     // Binds descriptors from descriptor sets to buffers
     VkWriteDescriptorSet writeDescriptorSet = {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         // write to this descriptor set.
         .dstSet = descriptorSet,
         // update 1 descriptor respective set (we only have 1).
@@ -460,6 +471,7 @@ void Utility::createComputePipeline(
     // };
     auto [fileLength, fileBytes] = readShader(shaderFile); // (length,bytes)
     VkShaderModuleCreateInfo createInfo = {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
         .codeSize = fileLength,
         .pCode = fileBytes
     };
@@ -474,6 +486,7 @@ void Utility::createComputePipeline(
     // The pipeline layout allows the pipeline to access descriptor sets. 
     // So we just specify the descriptor set layout we created earlier.
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .setLayoutCount = 1, // 1 descriptor set
         .pSetLayouts = descriptorSetLayout // the 1 descriptor set 
     };
@@ -484,6 +497,7 @@ void Utility::createComputePipeline(
 
     // We specify the compute shader stage, and it's entry point(main).
     VkPipelineShaderStageCreateInfo shaderStageCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .stage = VK_SHADER_STAGE_COMPUTE_BIT, // Shader type
         .module = *computeShaderModule, // Shader module
         .pName = "main" // Shader entry point
@@ -491,6 +505,7 @@ void Utility::createComputePipeline(
 
     // Set our pipeline options
     VkComputePipelineCreateInfo pipelineCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
         .stage = shaderStageCreateInfo,
         .layout = *pipelineLayout
     };
@@ -517,6 +532,7 @@ void Utility::createCommandBuffer(
 ) {
     // Creates command pool
     VkCommandPoolCreateInfo commandPoolCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .queueFamilyIndex = queueFamilyIndex // Sets queue family
     };
     VK_CHECK_RESULT(vkCreateCommandPool(
@@ -525,6 +541,7 @@ void Utility::createCommandBuffer(
 
     // Allocates command buffer
     VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .commandPool = *commandPool,  // Pool to allocate from
         .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
         .commandBufferCount = 1  // Allocates 1 command buffer. 
@@ -535,6 +552,7 @@ void Utility::createCommandBuffer(
 
     // Allocated command buffer options
     VkCommandBufferBeginInfo beginInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         // Buffer only submitted once
         .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
     };
@@ -566,11 +584,14 @@ void Utility::runCommandBuffer(
 ) {
     // Creates fence (so we can await for command buffer to finish)
     VkFence fence;
-    VkFenceCreateInfo fenceCreateInfo = {};
+    VkFenceCreateInfo fenceCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+    };
     VK_CHECK_RESULT(vkCreateFence(device, &fenceCreateInfo, nullptr, &fence));
 
     // Command buffer submit info
     VkSubmitInfo submitInfo = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         // submit 1 command buffer
         .commandBufferCount = 1,
         // pointer to array of command buffers to submit
