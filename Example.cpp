@@ -5,7 +5,7 @@
 ComputeApp::ComputeApp(
     char const* shaderFile,
     uint32_t const bufferSize,
-    float* bufferData,
+    uint32_t* bufferData,
     uint32_t* dims, // [x,y,z],
     uint32_t const* dimLengths // [local_size_x, local_size_y, local_size_z]
 ) {
@@ -309,7 +309,7 @@ void Utility::createBuffer(
 void Utility::fillBuffer(
     VkDevice const& device,
     VkDeviceMemory& bufferMemory,
-    float*& bufferData, 
+    uint32_t*& bufferData, 
     uint32_t const bufferSize
 ) {
     void* data = nullptr;

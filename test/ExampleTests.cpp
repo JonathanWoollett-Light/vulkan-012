@@ -9,7 +9,7 @@ TEST(Boilerplate, ten) {
     ComputeApp app = ComputeApp(
         shader,
         size, // Buffer sizes
-        new float[size], // Buffer data
+        new uint32_t[size], // Buffer data
         new uint32_t[3]{ size,1,1 }, // Invocations
         new uint32_t[3]{ WORKGROUP_SIZE,1,1 } // Workgroup sizes
     );
